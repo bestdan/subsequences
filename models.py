@@ -10,6 +10,7 @@ class User(UserMixin, db.Model):
 
 class GameSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(6), unique=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(20), default='waiting')  # waiting, active, completed
     current_turn = db.Column(db.Integer, default=0)
