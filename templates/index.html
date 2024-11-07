@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="text-center">
+    <h1 class="display-4 mb-4">Welcome to Subsequences</h1>
+    <p class="lead mb-4">Create collaborative stories one sentence at a time!</p>
+    
+    {% if current_user.is_authenticated %}
+        <form action="{{ url_for('game_routes.create_game') }}" method="post" class="mb-4">
+            <button type="submit" class="btn btn-primary">Create New Game</button>
+        </form>
+    {% else %}
+        <div class="alert alert-info">
+            Please login with Google to create or join games.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
