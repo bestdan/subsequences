@@ -136,7 +136,7 @@ def on_join(data):
             'status': game.status,
             'player_count': len(game.players),
             'current_turn': game.current_turn,
-            'players': [{'username': p.username, 'ready': any(pg.ready for pg in p.games if pg.game_id == game_id)} 
+            'players': [{'username': p.username, 'ready': any(pg.ready for pg in p.games if pg.game_id == game.id)} 
                        for p in game.players]
         }, room=room)
 
