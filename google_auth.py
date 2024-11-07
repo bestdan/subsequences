@@ -4,6 +4,9 @@ import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
+# Set environment variable for development
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'  # For development only
+
 from app import db
 from flask import Blueprint, redirect, request, url_for, flash
 from flask_login import login_required, login_user, logout_user
@@ -38,7 +41,7 @@ def login():
     """Initiate Google OAuth login flow"""
     try:
         # Find out what URL to hit for Google login
-        google_provider_cfg = requests.get(GOOGLE_DISCOVERY_URL).json()
+        google_provider_cfg = requests.get(GOOGLE_DISCOVERY_URL, verify=False).json()
         authorization_endpoint = google_provider_cfg["authorization_endpoint"]
         
         # Add debug print
@@ -67,13 +70,13 @@ def callback():
             return redirect(url_for("game_routes.index"))
 
         # Find out what URL to hit to get tokens
-        google_provider_cfg = requests.get(GOOGLE_DISCOVERY_URL).json()
+        google_provider_cfg = requests.get(GOOGLE_DISCOVERY_URL, verify=False).json()
         token_endpoint = google_provider_cfg["token_endpoint"]
 
         # Prepare and send request to get tokens
         token_url, headers, body = client.prepare_token_request(
             token_endpoint,
-            authorization_response=request.url,  # Remove http->https replacement
+            authorization_response=request.url.replace('http://', 'https://'),
             redirect_url=DEV_REDIRECT_URL,
             code=code,
         )
@@ -82,6 +85,7 @@ def callback():
             headers=headers,
             data=body,
             auth=(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET),
+            verify=False
         )
 
         # Parse the tokens
@@ -90,7 +94,7 @@ def callback():
         # Get user info from Google
         userinfo_endpoint = google_provider_cfg["userinfo_endpoint"]
         uri, headers, body = client.add_token(userinfo_endpoint)
-        userinfo_response = requests.get(uri, headers=headers, data=body)
+        userinfo_response = requests.get(uri, headers=headers, data=body, verify=False)
 
         # Verify user email
         if not userinfo_response.json().get("email_verified"):
