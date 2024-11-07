@@ -41,7 +41,7 @@ def login():
         # Use library to construct the request for Google login
         request_uri = client.prepare_request_uri(
             authorization_endpoint,
-            redirect_uri=request.base_url.replace("http://", "https://") + "/callback",
+            redirect_uri=DEV_REDIRECT_URL,
             scope=["openid", "email", "profile"],
         )
         return redirect(request_uri)
@@ -67,7 +67,7 @@ def callback():
         token_url, headers, body = client.prepare_token_request(
             token_endpoint,
             authorization_response=request.url.replace("http://", "https://"),
-            redirect_url=request.base_url.replace("http://", "https://"),
+            redirect_url=DEV_REDIRECT_URL,
             code=code,
         )
         token_response = requests.post(
