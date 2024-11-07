@@ -33,6 +33,8 @@ with app.app_context():
     app.register_blueprint(google_auth)
     app.register_blueprint(game_routes)
     
+    # Drop all tables and recreate to fix schema
+    db.drop_all()
     db.create_all()
 
 @login_manager.user_loader
