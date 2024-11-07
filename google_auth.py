@@ -1,6 +1,9 @@
 import json
 import os
 import requests
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
 from app import db
 from flask import Blueprint, redirect, request, url_for, flash
 from flask_login import login_required, login_user, logout_user
@@ -37,7 +40,10 @@ def login():
         # Find out what URL to hit for Google login
         google_provider_cfg = requests.get(GOOGLE_DISCOVERY_URL).json()
         authorization_endpoint = google_provider_cfg["authorization_endpoint"]
-
+        
+        # Add debug print
+        print(f"Using redirect URI: {DEV_REDIRECT_URL}")
+        
         # Use library to construct the request for Google login
         request_uri = client.prepare_request_uri(
             authorization_endpoint,
@@ -46,6 +52,7 @@ def login():
         )
         return redirect(request_uri)
     except Exception as e:
+        print(f"Login error: {str(e)}")  # Add error logging
         flash("Failed to initialize login. Please try again.", "error")
         return redirect(url_for("game_routes.index"))
 
@@ -66,7 +73,7 @@ def callback():
         # Prepare and send request to get tokens
         token_url, headers, body = client.prepare_token_request(
             token_endpoint,
-            authorization_response=request.url.replace("http://", "https://"),
+            authorization_response=request.url,  # Remove http->https replacement
             redirect_url=DEV_REDIRECT_URL,
             code=code,
         )
@@ -112,6 +119,7 @@ def callback():
         return redirect(url_for("game_routes.index"))
 
     except Exception as e:
+        print(f"Callback error: {str(e)}")  # Add error logging
         flash("Authentication failed. Please try again.", "error")
         return redirect(url_for("game_routes.index"))
 
@@ -123,5 +131,6 @@ def logout():
         logout_user()
         flash("You have been logged out successfully.", "info")
     except Exception as e:
+        print(f"Logout error: {str(e)}")  # Add error logging
         flash("Logout failed. Please try again.", "error")
     return redirect(url_for("game_routes.index"))
