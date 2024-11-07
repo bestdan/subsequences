@@ -13,10 +13,10 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Subsequences Game"
+args = "Flask Server"
 
 [[workflows.workflow]]
-name = "Subsequences Game"
+name = "Flask Server"
 author = "agent"
 
 [workflows.workflow.metadata]

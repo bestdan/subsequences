@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1 class="display-4 mb-4">Dashboard</h1>
+    
+    <!-- Player Statistics Card -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card bg-dark">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">Your Statistics</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center mb-3">
+                                <h4 class="text-primary">{{ user_stats.total_games }}</h4>
+                                <p class="text-muted mb-0">Total Games</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center mb-3">
+                                <h4 class="text-success">{{ user_stats.completed_games }}</h4>
+                                <p class="text-muted mb-0">Completed Games</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center mb-3">
+                                <h4 class="text-info">{{ user_stats.total_sentences }}</h4>
+                                <p class="text-muted mb-0">Total Sentences</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center mb-3">
+                                <h4 class="text-warning">{{ user_stats.avg_words_per_sentence }}</h4>
+                                <p class="text-muted mb-0">Avg Words/Sentence</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Recent Games -->
+        <div class="col-md-8">
+            <div class="card bg-dark mb-4">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">Recent Games</h3>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-dark">
+                            <thead>
+                                <tr>
+                                    <th>Game Code</th>
+                                    <th>Status</th>
+                                    <th>Sentences</th>
+                                    <th>Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for game, sentence_count in recent_games %}
+                                <tr>
+                                    <td>{{ game.code }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if game.status == 'completed' else 'warning' if game.status == 'active' else 'secondary' }}">
+                                            {{ game.status.title() }}
+                                        </span>
+                                    </td>
+                                    <td>{{ sentence_count }}</td>
+                                    <td>{{ game.created_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        <a href="{{ url_for('game_routes.game', game_code=game.code) }}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Players -->
+        <div class="col-md-4">
+            <div class="card bg-dark mb-4">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">Top Players</h3>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        {% for player, games_played in top_players %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>{{ player.username }}</span>
+                            <span class="badge bg-primary rounded-pill">{{ games_played }} games</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

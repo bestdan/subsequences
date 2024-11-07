@@ -2,9 +2,10 @@ from flask import Blueprint, render_template, jsonify, request, url_for, redirec
 from flask_login import login_required, current_user
 from flask_socketio import emit, join_room, leave_room
 from app import db, socketio
-from models import GameSession, PlayerGame, Sentence
+from models import GameSession, PlayerGame, Sentence, User
 import random
 import string
+from sqlalchemy import func, desc
 
 game_routes = Blueprint('game_routes', __name__)
 
@@ -18,6 +19,62 @@ def generate_game_code():
 @game_routes.route('/')
 def index():
     return render_template('index.html')
+
+@game_routes.route('/dashboard')
+@login_required
+def dashboard():
+    # Get user's game statistics
+    user_stats = {}
+    user_stats['total_games'] = PlayerGame.query.filter_by(player_id=current_user.id).count()
+    user_stats['completed_games'] = PlayerGame.query.join(GameSession).filter(
+        PlayerGame.player_id == current_user.id,
+        GameSession.status == 'completed'
+    ).count()
+    
+    # Get total sentences contributed
+    user_stats['total_sentences'] = Sentence.query.filter_by(player_id=current_user.id).count()
+    
+    # Get average words per sentence
+    sentences = Sentence.query.filter_by(player_id=current_user.id).all()
+    total_words = sum(len(sentence.content.split()) for sentence in sentences) if sentences else 0
+    user_stats['avg_words_per_sentence'] = round(total_words / len(sentences), 1) if sentences else 0
+    
+    # Get recent games
+    recent_games = db.session.query(
+        GameSession,
+        func.count(Sentence.id).label('sentence_count')
+    ).join(
+        PlayerGame
+    ).outerjoin(
+        Sentence
+    ).filter(
+        PlayerGame.player_id == current_user.id
+    ).group_by(
+        GameSession.id
+    ).order_by(
+        desc(GameSession.created_at)
+    ).limit(5).all()
+    
+    # Get top players (by number of completed games)
+    top_players = db.session.query(
+        User,
+        func.count(PlayerGame.player_id).label('games_played')
+    ).join(
+        PlayerGame
+    ).join(
+        GameSession
+    ).filter(
+        GameSession.status == 'completed'
+    ).group_by(
+        User.id
+    ).order_by(
+        desc('games_played')
+    ).limit(5).all()
+    
+    return render_template('dashboard.html', 
+                         user_stats=user_stats, 
+                         recent_games=recent_games,
+                         top_players=top_players)
 
 @game_routes.route('/game/create', methods=['POST'])
 @login_required
