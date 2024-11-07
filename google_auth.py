@@ -1,6 +1,5 @@
 import json
 import os
-
 import requests
 from app import db
 from flask import Blueprint, redirect, request, url_for, flash
@@ -34,82 +33,95 @@ google_auth = Blueprint("google_auth", __name__)
 @google_auth.route("/google_login")
 def login():
     """Initiate Google OAuth login flow"""
-    # Find out what URL to hit for Google login
-    google_provider_cfg = requests.get(GOOGLE_DISCOVERY_URL).json()
-    authorization_endpoint = google_provider_cfg["authorization_endpoint"]
+    try:
+        # Find out what URL to hit for Google login
+        google_provider_cfg = requests.get(GOOGLE_DISCOVERY_URL).json()
+        authorization_endpoint = google_provider_cfg["authorization_endpoint"]
 
-    # Use library to construct the request for Google login
-    request_uri = client.prepare_request_uri(
-        authorization_endpoint,
-        redirect_uri=request.base_url.replace("http://", "https://") + "/callback",
-        scope=["openid", "email", "profile"],
-    )
-    return redirect(request_uri)
+        # Use library to construct the request for Google login
+        request_uri = client.prepare_request_uri(
+            authorization_endpoint,
+            redirect_uri=request.base_url.replace("http://", "https://") + "/callback",
+            scope=["openid", "email", "profile"],
+        )
+        return redirect(request_uri)
+    except Exception as e:
+        flash("Failed to initialize login. Please try again.", "error")
+        return redirect(url_for("game_routes.index"))
 
 @google_auth.route("/google_login/callback")
 def callback():
     """Handle the Google OAuth callback after successful login"""
-    # Get authorization code Google sent back
-    code = request.args.get("code")
-    if not code:
+    try:
+        # Get authorization code Google sent back
+        code = request.args.get("code")
+        if not code:
+            flash("Authentication failed. Please try again.", "error")
+            return redirect(url_for("game_routes.index"))
+
+        # Find out what URL to hit to get tokens
+        google_provider_cfg = requests.get(GOOGLE_DISCOVERY_URL).json()
+        token_endpoint = google_provider_cfg["token_endpoint"]
+
+        # Prepare and send request to get tokens
+        token_url, headers, body = client.prepare_token_request(
+            token_endpoint,
+            authorization_response=request.url.replace("http://", "https://"),
+            redirect_url=request.base_url.replace("http://", "https://"),
+            code=code,
+        )
+        token_response = requests.post(
+            token_url,
+            headers=headers,
+            data=body,
+            auth=(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET),
+        )
+
+        # Parse the tokens
+        client.parse_request_body_response(json.dumps(token_response.json()))
+
+        # Get user info from Google
+        userinfo_endpoint = google_provider_cfg["userinfo_endpoint"]
+        uri, headers, body = client.add_token(userinfo_endpoint)
+        userinfo_response = requests.get(uri, headers=headers, data=body)
+
+        # Verify user email
+        if not userinfo_response.json().get("email_verified"):
+            flash("User email not verified by Google.", "error")
+            return redirect(url_for("game_routes.index"))
+
+        # Get user data
+        userinfo = userinfo_response.json()
+        email = userinfo["email"]
+        username = userinfo.get("given_name", email.split("@")[0])
+
+        # Create or update user in database
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            user = User(username=username, email=email)
+            db.session.add(user)
+            db.session.commit()
+            flash("Account created successfully!", "success")
+        else:
+            flash("Welcome back!", "success")
+
+        # Begin user session
+        login_user(user)
+
+        # Send user to homepage
+        return redirect(url_for("game_routes.index"))
+
+    except Exception as e:
         flash("Authentication failed. Please try again.", "error")
         return redirect(url_for("game_routes.index"))
-
-    # Find out what URL to hit to get tokens
-    google_provider_cfg = requests.get(GOOGLE_DISCOVERY_URL).json()
-    token_endpoint = google_provider_cfg["token_endpoint"]
-
-    # Prepare and send request to get tokens
-    token_url, headers, body = client.prepare_token_request(
-        token_endpoint,
-        authorization_response=request.url.replace("http://", "https://"),
-        redirect_url=request.base_url.replace("http://", "https://"),
-        code=code,
-    )
-    token_response = requests.post(
-        token_url,
-        headers=headers,
-        data=body,
-        auth=(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET),
-    )
-
-    # Parse the tokens
-    client.parse_request_body_response(json.dumps(token_response.json()))
-
-    # Get user info from Google
-    userinfo_endpoint = google_provider_cfg["userinfo_endpoint"]
-    uri, headers, body = client.add_token(userinfo_endpoint)
-    userinfo_response = requests.get(uri, headers=headers, data=body)
-
-    # Verify user email
-    if not userinfo_response.json().get("email_verified"):
-        flash("User email not verified by Google.", "error")
-        return redirect(url_for("game_routes.index"))
-
-    # Get user data
-    userinfo = userinfo_response.json()
-    email = userinfo["email"]
-    username = userinfo.get("given_name", email.split("@")[0])
-
-    # Create or update user in database
-    user = User.query.filter_by(email=email).first()
-    if not user:
-        user = User(username=username, email=email)
-        db.session.add(user)
-        db.session.commit()
-
-    # Begin user session
-    login_user(user)
-    flash(f"Welcome, {user.username}!", "success")
-
-    # Send user to homepage
-    return redirect(url_for("game_routes.index"))
 
 @google_auth.route("/logout")
 @login_required
 def logout():
     """Handle user logout"""
-    logout_user()
-    flash("You have been logged out successfully.", "info")
+    try:
+        logout_user()
+        flash("You have been logged out successfully.", "info")
+    except Exception as e:
+        flash("Logout failed. Please try again.", "error")
     return redirect(url_for("game_routes.index"))
-

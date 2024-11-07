@@ -14,16 +14,30 @@
             <a class="navbar-brand" href="{{ url_for('game_routes.index') }}">Subsequences</a>
             <div class="navbar-nav ms-auto">
                 {% if current_user.is_authenticated %}
-                    <span class="nav-item nav-link">{{ current_user.username }}</span>
-                    <a class="nav-item nav-link" href="{{ url_for('google_auth.logout') }}">Logout</a>
+                    <span class="nav-item nav-link text-light">{{ current_user.username }}</span>
+                    <a class="nav-item nav-link btn btn-outline-danger btn-sm ms-2" href="{{ url_for('google_auth.logout') }}">Logout</a>
                 {% else %}
-                    <a class="nav-item nav-link" href="{{ url_for('google_auth.login') }}">Login with Google</a>
+                    <a class="nav-item nav-link btn btn-outline-primary btn-sm" href="{{ url_for('google_auth.login') }}">
+                        <img src="https://www.google.com/favicon.ico" alt="Google" class="me-2" style="width: 16px; height: 16px;">
+                        Login with Google
+                    </a>
                 {% endif %}
             </div>
         </div>
     </nav>
 
     <main class="container my-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
         {% block content %}{% endblock %}
     </main>
 
