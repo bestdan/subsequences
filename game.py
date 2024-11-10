@@ -6,8 +6,13 @@ from models import GameSession, PlayerGame, Sentence, User
 import random
 import string
 from sqlalchemy import func, desc
+import google.generativeai as genai
+import os
 
 game_routes = Blueprint('game_routes', __name__)
+
+genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
+model = genai.GenerativeModel('gemini-pro')
 
 def generate_game_code():
     """Generate a unique 6-character game code"""
@@ -180,28 +185,50 @@ def on_submit_sentence(data):
     content = data['sentence']
     room = f"game_{game_id}"
     
-    game = GameSession.query.get(game_id)
-    if game and game.status == 'active':
-        sentence = Sentence(
-            game_id=game_id,
-            player_id=current_user.id,
-            content=content,
-            order=game.current_turn
-        )
-        db.session.add(sentence)
-        game.current_turn += 1
+    # Add grammar check with Gemini
+    prompt = f"""
+    Analyze if this sentence is grammatically correct. 
+    Respond with only 'true' or 'false'.
+    Sentence: "{content}"
+    """
+    
+    try:
+        response = model.generate_content(prompt)
+        is_valid = response.text.strip().lower() == 'true'
         
-        if game.current_turn >= 12:
-            game.status = 'completed'
+        if not is_valid:
+            emit('sentence_error', {
+                'message': 'Your sentence contains grammatical errors. Please correct it.'
+            }, room=room)
+            return
         
-        db.session.commit()
-        
-        last_words = ' '.join(content.split()[-10:]) if content else ''
-        next_player = game.players[(game.current_turn) % len(game.players)]
-        
-        emit('sentence_submitted', {
-            'last_words': last_words,
-            'turn': game.current_turn,
-            'game_status': game.status,
-            'next_player': next_player.username
+        game = GameSession.query.get(game_id)
+        if game and game.status == 'active':
+            sentence = Sentence(
+                game_id=game_id,
+                player_id=current_user.id,
+                content=content,
+                order=game.current_turn
+            )
+            db.session.add(sentence)
+            game.current_turn += 1
+            
+            if game.current_turn >= 12:
+                game.status = 'completed'
+            
+            db.session.commit()
+            
+            last_words = ' '.join(content.split()[-10:]) if content else ''
+            next_player = game.players[(game.current_turn) % len(game.players)]
+            
+            emit('sentence_submitted', {
+                'last_words': last_words,
+                'turn': game.current_turn,
+                'game_status': game.status,
+                'next_player': next_player.username
+            }, room=room)
+    
+    except Exception as e:
+        emit('sentence_error', {
+            'message': 'Error checking sentence grammar. Please try again.'
         }, room=room)

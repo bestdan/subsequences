@@ -1,8 +1,9 @@
 import json
 import os
 import requests
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 
 # Set environment variable for development
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'  # For development only
@@ -13,12 +14,12 @@ from flask_login import login_required, login_user, logout_user
 from models import User
 from oauthlib.oauth2 import WebApplicationClient
 
-GOOGLE_CLIENT_ID = os.environ["GOOGLE_OAUTH_CLIENT_ID"]
-GOOGLE_CLIENT_SECRET = os.environ["GOOGLE_OAUTH_CLIENT_SECRET"]
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
 GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
 
 # Make sure to use this redirect URL for proper Google OAuth callback
-DEV_REDIRECT_URL = f'https://{os.environ["REPLIT_DEV_DOMAIN"]}/google_login/callback'
+DEV_REDIRECT_URL = f'https://{os.environ.get("REPLIT_DEV_DOMAIN")}/google_login/callback' 
 
 # Print setup instructions for Google OAuth configuration
 print(f"""To make Google authentication work:
@@ -59,7 +60,7 @@ def login():
         flash("Failed to initialize login. Please try again.", "error")
         return redirect(url_for("game_routes.index"))
 
-@google_auth.route("/google_login/callback")
+@google_auth.route("/oauth-callback/google_login/callback")
 def callback():
     """Handle the Google OAuth callback after successful login"""
     try:

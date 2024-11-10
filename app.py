@@ -4,7 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO
 from flask_login import LoginManager
 from sqlalchemy.orm import DeclarativeBase
-
+from config import Config
 class Base(DeclarativeBase):
     pass
 
@@ -13,8 +13,11 @@ socketio = SocketIO()
 login_manager = LoginManager()
 
 app = Flask(__name__)
+
+app.config.from_object(Config)
+
 app.secret_key = os.environ.get("FLASK_SECRET_KEY") or "a secret key"
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL") or "sqlite:///project.db"
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
     "pool_pre_ping": True,

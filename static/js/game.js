@@ -20,7 +20,7 @@ function copyShareLink() {
     const shareLink = document.getElementById('shareLink');
     shareLink.select();
     document.execCommand('copy');
-    
+
     // Visual feedback
     const button = shareLink.nextElementSibling;
     const originalText = button.textContent;
@@ -32,7 +32,7 @@ function copyShareLink() {
 socket.on('game_status', (data) => {
     document.getElementById('playerCount').textContent = data.player_count;
     document.getElementById('totalPlayers').textContent = data.player_count;
-    
+
     // Update ready status for all players
     const playersList = document.getElementById('playersList');
     data.players.forEach(player => {
@@ -47,7 +47,7 @@ socket.on('game_status', (data) => {
 
 socket.on('player_status_update', (data) => {
     document.getElementById('readyCount').textContent = data.ready_count;
-    
+
     const playerItem = document.querySelector(`[data-player="${data.username}"]`);
     if (playerItem) {
         const badge = playerItem.querySelector('.ready-status');
@@ -60,9 +60,9 @@ socket.on('game_start', (data) => {
     document.getElementById('gameStatus').textContent = 'Game Started!';
     document.getElementById('readyButton')?.remove();
     document.getElementById('gameArea').style.display = 'block';
-    
+
     updateTurnProgress(data.current_turn);
-    
+
     if (data.first_turn) {
         document.getElementById('lastWords').textContent = 'Start the story!';
         document.getElementById('turnIndicator').textContent = "It's your turn to start the story!";
@@ -75,15 +75,15 @@ socket.on('sentence_submitted', (data) => {
     if (data.game_status === 'completed') {
         showGameComplete();
     } else {
-        document.getElementById('lastWords').textContent = 
+        document.getElementById('lastWords').textContent =
             `Previous sentence ended with: ${data.last_words}`;
         document.getElementById('sentence').value = '';
         updateTurnProgress(data.turn);
-        
+
         // Update turn indicator
         const turnIndicator = document.getElementById('turnIndicator');
         const isMyTurn = data.next_player === document.querySelector('.navbar-nav .text-light').textContent.trim();
-        
+
         if (isMyTurn) {
             turnIndicator.textContent = "It's your turn!";
             document.getElementById('sentence').disabled = false;
@@ -119,14 +119,18 @@ function updateTurnProgress(turn) {
 function showGameComplete() {
     document.getElementById('gameArea').style.display = 'none';
     document.getElementById('gameComplete').style.display = 'block';
-    
+
     // Fetch and display the complete story
     fetch(`/game/${GAME_ID}/story`)
         .then(response => response.json())
         .then(story => {
-            const storyHtml = story.sentences.map(s => 
+            const storyHtml = story.sentences.map(s =>
                 `<p><strong>${s.author}:</strong> ${s.content}</p>`
             ).join('');
             document.getElementById('finalStory').innerHTML = storyHtml;
         });
 }
+
+socket.on('sentence_error', function (data) {
+    alert(data.message);
+});
